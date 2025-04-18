@@ -1,0 +1,3 @@
+../Core/Src/eeprom24c256.c:8:26:EEPROM_WaitReady	3
+../Core/Src/eeprom24c256.c:24:19:EEPROM_Write	7
+../Core/Src/eeprom24c256.c:91:19:EEPROM_Read	4
