@@ -103,14 +103,15 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    uint8_t ch;
-    if (HAL_UART_Receive(&huart2, &ch, 1, 10) == HAL_OK)
-    {
-      HAL_UART_Transmit(&huart2, &ch, 1, HAL_MAX_DELAY);   // echo
-    }
+    const char msg[] = "Hello STM32\r\n";
+    HAL_UART_Transmit(&huart2, (uint8_t*)msg, sizeof(msg) - 1, HAL_MAX_DELAY);
+    HAL_Delay(500);        // ждём 500 мс
   }
+  /* USER CODE END WHILE */
+
   /* USER CODE END 3 */
 }
 
