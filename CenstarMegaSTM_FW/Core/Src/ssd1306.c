@@ -1,54 +1,32 @@
-/* ssd1306.c  –  минимальная реализация */
-
 #include "ssd1306.h"
 #include <string.h>
 
+/* === внутренний буфер 1 КБ === */
 static uint8_t Buffer[SSD1306_WIDTH * SSD1306_HEIGHT / 8];
-static uint8_t CurrentX = 0;
-static uint8_t CurrentY = 0;
+static uint8_t CurrentX, CurrentY;
 
-static HAL_StatusTypeDef ssd1306_WriteCommand(uint8_t cmd)
+/* === маленький шрифт 5×7 (ASCII 32‑126) === */
+static const uint8_t Font5x7[] = {
+  #include "font5x7.inc"        /* файл приведён ниже */
+};
+
+/* ---- низкоуровневые функции ---- */
+static HAL_StatusTypeDef CMD(uint8_t c)
 {
-    uint8_t d[2] = {0x00, cmd};
+    uint8_t d[2] = {0x00, c};
     return HAL_I2C_Master_Transmit(&hi2c1, SSD1306_I2C_ADDR, d, 2, HAL_MAX_DELAY);
 }
 
+/* ---- публичные ---- */
 void ssd1306_Init(void)
 {
     HAL_Delay(100);
-    ssd1306_WriteCommand(0xAE); // Display off
-    ssd1306_WriteCommand(0x20); // Memory addressing mode = horizontal
-    ssd1306_WriteCommand(0x00);
-
-    ssd1306_WriteCommand(0xB0); // Page Start
-    ssd1306_WriteCommand(0xC8); // COM Output Scan Direction
-    ssd1306_WriteCommand(0x00); // Low column
-    ssd1306_WriteCommand(0x10); // High column
-    ssd1306_WriteCommand(0x40); // Start line address
-    ssd1306_WriteCommand(0x81); // Contrast
-    ssd1306_WriteCommand(0x7F);
-
-    ssd1306_WriteCommand(0xA1); // Segment remap
-    ssd1306_WriteCommand(0xA6); // Normal display
-    ssd1306_WriteCommand(0xA8); // Multiplex ratio
-    ssd1306_WriteCommand(0x3F);
-
-    ssd1306_WriteCommand(0xA4); // Output follows RAM
-    ssd1306_WriteCommand(0xD3); // Display offset
-    ssd1306_WriteCommand(0x00);
-
-    ssd1306_WriteCommand(0xD5); // Display clock divide
-    ssd1306_WriteCommand(0xF0);
-    ssd1306_WriteCommand(0xD9); // Pre‑charge
-    ssd1306_WriteCommand(0x22);
-    ssd1306_WriteCommand(0xDA); // COM Pins
-    ssd1306_WriteCommand(0x12);
-    ssd1306_WriteCommand(0xDB); // VCOM detect
-    ssd1306_WriteCommand(0x20);
-    ssd1306_WriteCommand(0x8D); // Charge pump
-    ssd1306_WriteCommand(0x14);
-
-    ssd1306_WriteCommand(0xAF); // Display ON
+    CMD(0xAE); CMD(0x20); CMD(0x00); CMD(0xB0); CMD(0xC8);
+    CMD(0x00); CMD(0x10); CMD(0x40); CMD(0x81); CMD(0x7F);
+    CMD(0xA1); CMD(0xA6); CMD(0xA8); CMD(0x3F); CMD(0xA4);
+    CMD(0xD3); CMD(0x00); CMD(0xD5); CMD(0xF0); CMD(0xD9);
+    CMD(0x22); CMD(0xDA); CMD(0x12); CMD(0xDB); CMD(0x20);
+    CMD(0x8D); CMD(0x14); CMD(0xAF);
 
     ssd1306_Fill(SSD1306_COLOR_BLACK);
     ssd1306_UpdateScreen();
@@ -58,9 +36,7 @@ void ssd1306_UpdateScreen(void)
 {
     for (uint8_t page = 0; page < 8; page++)
     {
-        ssd1306_WriteCommand(0xB0 + page);
-        ssd1306_WriteCommand(0x00);
-        ssd1306_WriteCommand(0x10);
+        CMD(0xB0 + page); CMD(0x00); CMD(0x10);
         HAL_I2C_Mem_Write(&hi2c1, SSD1306_I2C_ADDR, 0x40,
                           I2C_MEMADD_SIZE_8BIT,
                           &Buffer[SSD1306_WIDTH * page],
@@ -79,38 +55,41 @@ void ssd1306_SetCursor(uint8_t x, uint8_t y)
     CurrentY = y;
 }
 
-/* --- очень упрощённый вывод символов шрифтом 5x7 --- */
-static const uint8_t Font5x7[] = {
-#include "font5x7.inc"           // вставь сюда массив или реализуй позже
-};
-
 void ssd1306_WriteChar(char ch, SSD1306_COLOR color)
 {
     if (ch < 32 || ch > 126) ch = '?';
     const uint8_t* glyph = &Font5x7[(ch - 32) * 5];
-    for (uint8_t i = 0; i < 5; i++)
+
+    for (uint8_t col = 0; col < 5; col++)
     {
-        uint8_t line = glyph[i];
-        for (uint8_t j = 0; j < 8; j++)
+        uint8_t line = glyph[col];
+        for (uint8_t row = 0; row < 7; row++)
         {
-            uint32_t idx = CurrentX + (CurrentY / 8) * SSD1306_WIDTH;
+            uint32_t idx = CurrentX + ((CurrentY + row) / 8) * SSD1306_WIDTH;
+            uint8_t  bit = 1 << ((CurrentY + row) % 8);
+
             if (line & 0x01)
-                Buffer[idx] |= (1 << (CurrentY % 8));
+                Buffer[idx] |=  bit;
             else
-                Buffer[idx] &= ~(1 << (CurrentY % 8));
+                Buffer[idx] &= ~bit;
             line >>= 1;
-            CurrentY++;
         }
         CurrentX++;
-        CurrentY -= 8;
     }
-    CurrentX++; // пробел
+    CurrentX++; /* один столбец пробела */
 }
 
 void ssd1306_WriteString(const char* str, SSD1306_COLOR color)
 {
     while (*str)
-    {
         ssd1306_WriteChar(*str++, color);
-    }
+}
+
+/* маленький тест: вывод "Hello OLED!" */
+void ssd1306_Test(void)
+{
+    ssd1306_Fill(SSD1306_COLOR_BLACK);
+    ssd1306_SetCursor(0, 0);
+    ssd1306_WriteString("Hello OLED!", SSD1306_COLOR_WHITE);
+    ssd1306_UpdateScreen();
 }
