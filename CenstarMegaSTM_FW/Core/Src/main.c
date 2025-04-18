@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include "ssd1306.h"
+#include "ssd1306.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -99,6 +101,13 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_UART_Transmit(&huart2, (uint8_t*)"Hello STM32\r\n", 13, HAL_MAX_DELAY);
+
+  ssd1306_Init();
+  ssd1306_Fill(SSD1306_COLOR_BLACK);
+  ssd1306_SetCursor(2, 2);
+  ssd1306_WriteString("Hello OLED!", Font_7x10, SSD1306_COLOR_WHITE);
+  ssd1306_UpdateScreen();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,8 +119,10 @@ int main(void)
     HAL_UART_Transmit(&huart2, (uint8_t*)msg, sizeof(msg) - 1, HAL_MAX_DELAY);
     HAL_Delay(500);        // ждём 500 мс
   }
-  /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
+    /* USER CODE BEGIN 3 */
+  }
   /* USER CODE END 3 */
 }
 
