@@ -1,17 +1,24 @@
-/* main.c – UART‑I2C тест с OLED вспышкой и I2C‑сканером */
+// main.c
+/*  STM32F407  ─  CenstarMegaSTM_FW
+ *  OLED SSD1306 + Keypad 5×4 + UART2‑логи + I²C‑сканер
+ *  Rows  ▸ PC0‑PC4 (выход)
+ *  Cols  ▸ PB0, PB1, PB11, PB12 (вход Pull‑Up)
+ */
 
 #include "main.h"
 #include <stdio.h>
 #include <string.h>
-#include "ssd1306.h"
 
-/* -------- CubeMX global handles -------- */
+#include "ssd1306.h"     /* дисплей */
+#include "keypad.h"      /* скан клавиатуры */
+
+/* ---------- CubeMX‑генерируемые глобальные хэндлы ---------- */
 I2C_HandleTypeDef hi2c1;
 I2S_HandleTypeDef hi2s3;
 UART_HandleTypeDef huart2;
-/* --------------------------------------- */
+/* ----------------------------------------------------------- */
 
-/* prototypes (CubeMX) */
+/* прототипы, которые сгенерирует CubeMX */
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
@@ -20,50 +27,73 @@ static void MX_USART2_UART_Init(void);
 
 int main(void)
 {
+  /* === инициализация HAL и тактирования === */
   HAL_Init();
   SystemClock_Config();
 
+  /* === инициализация периферии === */
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_I2S3_Init();
   MX_USART2_UART_Init();
 
+  /* === приветствие в UART2 === */
   HAL_UART_Transmit(&huart2,
-        (uint8_t*)"Hello STM32\r\n", 13, HAL_MAX_DELAY);
+        (uint8_t *)"Hello STM32\r\n", 13, HAL_MAX_DELAY);
 
-  /* --- Инициализация OLED --- */
+  /* === инициализация OLED и короткая вспышка === */
   ssd1306_Init();
-
-  /* Вспышка белым на 1 секунду */
   ssd1306_Fill(SSD1306_COLOR_WHITE);
   ssd1306_UpdateScreen();
-  HAL_Delay(1000);
+  HAL_Delay(1000);                       /* белый экран 1 с */
+  ssd1306_Test();                        /* вывод «Hello OLED!» */
 
-  /* Показ тестовой строки */
-  ssd1306_Test();                 /* ← новая функция выводит "Hello OLED!" */
-
+  /* счётчик проходов для I²C‑сканера */
   uint32_t pass = 0;
-  char msg[32];
+  char     buf[32];
 
   while (1)
   {
-      sprintf(msg, "\r\nScan #%lu\r\n", pass++);
-      HAL_UART_Transmit(&huart2,(uint8_t*)msg,strlen(msg),HAL_MAX_DELAY);
+      /* ---------- I²C‑сканирование шины ---------- */
+      sprintf(buf, "\r\nScan #%lu\r\n", pass++);
+      HAL_UART_Transmit(&huart2,(uint8_t*)buf,strlen(buf),HAL_MAX_DELAY);
 
       for (uint8_t addr = 1; addr < 128; addr++)
       {
           if (HAL_I2C_IsDeviceReady(&hi2c1, addr << 1, 1, 10) == HAL_OK)
           {
-              sprintf(msg, "Found 0x%02X\r\n", addr);
-              HAL_UART_Transmit(&huart2,(uint8_t*)msg,strlen(msg),HAL_MAX_DELAY);
+              sprintf(buf, "Found 0x%02X\r\n", addr);
+              HAL_UART_Transmit(&huart2,(uint8_t*)buf,strlen(buf),HAL_MAX_DELAY);
           }
       }
       HAL_UART_Transmit(&huart2,(uint8_t*)"Scan done\r\n",11,HAL_MAX_DELAY);
-      HAL_Delay(2000);
+
+      /* ---------- опрос клавиатуры ---------- */
+      char k = KEYPAD_Scan();
+      if (k)
+      {
+          /* вывод в UART2 */
+          sprintf(buf, "Key [%c]\r\n", k);
+          HAL_UART_Transmit(&huart2,(uint8_t*)buf,strlen(buf),HAL_MAX_DELAY);
+
+          /* вывод на OLED на 1 с */
+          ssd1306_Fill(SSD1306_COLOR_BLACK);
+          ssd1306_SetCursor(0, 0);
+          ssd1306_WriteString("Key:", SSD1306_COLOR_WHITE);
+          ssd1306_SetCursor(40, 0);
+          ssd1306_WriteChar(k, SSD1306_COLOR_WHITE);
+          ssd1306_UpdateScreen();
+          HAL_Delay(1000);
+
+          /* вернуть основную заставку */
+          ssd1306_Test();
+      }
+
+      HAL_Delay(500);   /* задержка перед следующим сканированием */
   }
 }
 
-/* ===== CubeMX‑generated functions (не менять) =================== */
+/* -----------  ниже функции CubeMX  (оставить как есть) -------- */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -144,15 +174,19 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
 
-  /* Сгенерированные CubeMX настройки пинов Discovery */
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|
-                           GPIO_PIN_15, GPIO_PIN_RESET);
-
-  GPIO_InitStruct.Pin   = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
+  /* CubeMX — здесь будут настройки остальных пинов вашей платы */
+  /* Настройки рядов keypad (PC0‑PC4) */
+  GPIO_InitStruct.Pin   = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4;
   GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull  = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /* Настройки колонок keypad (PB0,PB1,PB11,PB12) */
+  GPIO_InitStruct.Pin   = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_11|GPIO_PIN_12;
+  GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull  = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
 void Error_Handler(void)
