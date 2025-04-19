@@ -2,7 +2,8 @@
 
 #include "keypad.h"
 #include "config.h"
-#include <cmsis_os.h>
+#include "FreeRTOS.h"
+#include "task.h"
 
 // Карта клавиш 5×4 (как в вашем тестовом коде)
 static const char KeyMap[KEYPAD_ROW_COUNT][KEYPAD_COL_COUNT] = {
@@ -29,11 +30,11 @@ char getKeypadKey(void) {
             HAL_GPIO_WritePin(RowPort[i], RowPin[i], (i == r) ? GPIO_PIN_RESET : GPIO_PIN_SET);
         }
 
-        osDelay(1); // Задержка для стабилизации
+        vTaskDelay(1 / portTICK_PERIOD_MS); // Задержка для стабилизации (1 мс)
 
         for (uint8_t c = 0; c < KEYPAD_COL_COUNT; c++) {
             if (HAL_GPIO_ReadPin(ColPort[c], ColPin[c]) == GPIO_PIN_RESET) {
-                osDelay(KEY_DEBOUNCE_MS); // Антидребезг
+                vTaskDelay(KEY_DEBOUNCE_MS / portTICK_PERIOD_MS); // Антидребезг
                 if (HAL_GPIO_ReadPin(ColPort[c], ColPin[c]) == GPIO_PIN_RESET) {
                     return KeyMap[r][c];
                 }

@@ -3,7 +3,8 @@
 #include "oled.h"
 #include "config.h"
 #include <string.h>
-#include <cmsis_os.h>
+#include "FreeRTOS.h"
+#include "task.h"
 #include <stdbool.h>
 
 extern I2C_HandleTypeDef hi2c1;
@@ -164,7 +165,7 @@ void ssd1306_WriteString(const char* str, SSD1306_COLOR color) {
 
 // Инициализация дисплея
 void initOLED(void) {
-    osDelay(100); // Задержка для стабилизации
+    vTaskDelay(100 / portTICK_PERIOD_MS); // Задержка для стабилизации
     CMD(0xAE); CMD(0x20); CMD(0x00); CMD(0xB0); CMD(0xC8);
     CMD(0x00); CMD(0x10); CMD(0x40); CMD(0x81); CMD(0x7F);
     CMD(0xA1); CMD(0xA6); CMD(0xA8); CMD(0x3F); CMD(0xA4);

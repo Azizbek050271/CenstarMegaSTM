@@ -2,7 +2,8 @@
 
 #include "eeprom.h"
 #include "config.h"
-#include <cmsis_os.h>
+#include "FreeRTOS.h"
+#include "task.h"
 #include <stdbool.h>
 
 extern I2C_HandleTypeDef hi2c1;
@@ -146,7 +147,7 @@ uint16_t readPriceFromEEPROM(void) {
     xQueueSend(eepromQueue, &req, portMAX_DELAY);
     // Ждём выполнения операции (блокирующий вызов)
     while (uxQueueMessagesWaiting(eepromQueue) > 0) {
-        osDelay(1);
+        vTaskDelay(1 / portTICK_PERIOD_MS);
     }
     return price;
 }
@@ -179,7 +180,7 @@ bool restoreTransactionState(uint32_t* liters, uint32_t* price, FSMState* state,
     xQueueSend(eepromQueue, &req, portMAX_DELAY);
     // Ждём выполнения операции (блокирующий вызов)
     while (uxQueueMessagesWaiting(eepromQueue) > 0) {
-        osDelay(1);
+        vTaskDelay(1 / portTICK_PERIOD_MS);
     }
     return (*liters != 0xFFFFFFFF && *price != 0xFFFFFFFF && *(uint8_t*)state != 0xFF);
 }

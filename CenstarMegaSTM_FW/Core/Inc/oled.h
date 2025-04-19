@@ -5,6 +5,8 @@
 
 #include "stm32f4xx_hal.h"
 #include <stdbool.h>
+#include "FreeRTOS.h"
+#include "queue.h"
 
 #define SSD1306_WIDTH  128
 #define SSD1306_HEIGHT 64

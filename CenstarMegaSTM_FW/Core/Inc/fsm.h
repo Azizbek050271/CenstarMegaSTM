@@ -6,7 +6,10 @@
 #include "stm32f4xx_hal.h"
 #include "config.h"
 #include <stdbool.h>
-#include <cmsis_os.h>
+#include "FreeRTOS.h"
+#include "semphr.h"
+
+#define portMAX_DELAY ( TickType_t ) 0xffffffffUL
 
 // Типы данных
 typedef enum {

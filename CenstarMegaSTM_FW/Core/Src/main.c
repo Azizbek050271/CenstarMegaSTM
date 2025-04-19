@@ -3,7 +3,9 @@
  */
 
 #include "main.h"
-#include "cmsis_os.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
 #include "config.h"
 #include "fsm.h"
 #include "keypad.h"
@@ -92,7 +94,7 @@ int main(void)
     xTaskCreate(StartWatchdogTask, "Watchdog", 128, NULL, 5, NULL); // Задача Watchdog
 
     // Запуск планировщика FreeRTOS
-    osKernelStart();
+    vTaskStartScheduler();
 
     // Этот код никогда не будет достигнут
     while (1) {}
@@ -108,7 +110,7 @@ void StartFSMTask(void *argument)
         if (xQueueReceive(keypadQueue, &key, 0) == pdTRUE) {
             processKeyFSM(&fsmContext, key);
         }
-        osDelay(10); // Периодичность 10 мс
+        vTaskDelay(10 / portTICK_PERIOD_MS); // Периодичность 10 мс
     }
 }
 
@@ -120,7 +122,7 @@ void StartKeypadTask(void *argument)
         if (key) {
             xQueueSend(keypadQueue, &key, portMAX_DELAY);
         }
-        osDelay(20); // Периодичность 20 мс (с учётом антидребезга)
+        vTaskDelay(20 / portTICK_PERIOD_MS); // Периодичность 20 мс (с учётом антидребезга)
     }
 }
 
@@ -164,7 +166,7 @@ void StartWatchdogTask(void *argument)
 {
     for (;;) {
         HAL_IWDG_Refresh(&hiwdg); // Сброс Watchdog каждые 500 мс
-        osDelay(500);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
@@ -311,6 +313,13 @@ void MX_GPIO_Init(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
     */
+}
+
+void MX_DMA_Init(void)
+{
+    __HAL_RCC_DMA1_CLK_ENABLE();
+    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
 }
 
 void Error_Handler(void)

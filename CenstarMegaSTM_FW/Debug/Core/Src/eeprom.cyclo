@@ -1,0 +1,8 @@
+../Core/Src/eeprom.c:20:26:EEPROM_WaitReady	3
+../Core/Src/eeprom.c:31:26:EEPROM_Write	5
+../Core/Src/eeprom.c:61:26:EEPROM_Read	3
+../Core/Src/eeprom.c:78:6:handleEEPROMRequest	6
+../Core/Src/eeprom.c:129:6:writePriceToEEPROM	1
+../Core/Src/eeprom.c:139:10:readPriceFromEEPROM	2
+../Core/Src/eeprom.c:155:6:saveTransactionState	1
+../Core/Src/eeprom.c:169:6:restoreTransactionState	5

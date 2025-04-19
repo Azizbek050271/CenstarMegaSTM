@@ -1,0 +1,13 @@
+../Core/Src/rs422.c:24:6:initRS422	8	static
+../Core/Src/rs422.c:31:6:sendRS422Command	64	static
+../Core/Src/rs422.c:39:6:rs422SendStatus	32	static
+../Core/Src/rs422.c:48:6:rs422SendTransaction	56	static
+../Core/Src/rs422.c:76:6:rs422SendTransactionUpdate	32	static
+../Core/Src/rs422.c:86:6:rs422SendNozzleOff	32	static
+../Core/Src/rs422.c:95:6:rs422SendLitersMonitor	32	static
+../Core/Src/rs422.c:104:6:rs422SendRevenueStatus	32	static
+../Core/Src/rs422.c:113:6:rs422SendTotalCounter	32	static
+../Core/Src/rs422.c:124:6:rs422SendPause	32	static
+../Core/Src/rs422.c:134:6:rs422SendResume	32	static
+../Core/Src/rs422.c:145:5:rs422WaitForResponse	72	static
+../Core/Src/rs422.c:182:6:HAL_UART_RxCpltCallback	24	static,ignoring_inline_asm

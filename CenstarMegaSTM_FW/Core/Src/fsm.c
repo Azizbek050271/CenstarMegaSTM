@@ -9,7 +9,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <cmsis_os.h>
+#include "FreeRTOS.h"
+#include "task.h"
+#include <stdlib.h>
+
+// Объявление Error_Handler (определён в main.c)
+void Error_Handler(void);
 
 static SemaphoreHandle_t logMutex; // Мьютекс для синхронизации логов
 
@@ -691,7 +696,7 @@ void initFSM(FSMContext* ctx)
 
     // Отображение приветственного сообщения
     displayMessage("CENSTAR");
-    osDelay(DISPLAY_WELCOME_DURATION);
+    vTaskDelay(DISPLAY_WELCOME_DURATION / portTICK_PERIOD_MS);
 }
 
 // Основной цикл FSM
@@ -733,6 +738,9 @@ void processKeyFSM(FSMContext* ctx, char key)
     snprintf(logMsg, sizeof(logMsg), "Current mode: %d", ctx->fuelMode);
     logMessage(LOG_LEVEL_DEBUG, logMsg);
 
+    // Обработка клавиш в зависимости от состояния
+    // Не все состояния требуют обработки клавиш (например, CHECK_STATUS, ERROR, TRANSACTION),
+    // поэтому обрабатываем только те, где пользовательский ввод имеет смысл
     switch (ctx->state) {
         case FSM_STATE_WAIT_FOR_PRICE_INPUT: {
             if (key >= '0' && key <= '9') {
@@ -990,7 +998,7 @@ void processKeyFSM(FSMContext* ctx, char key)
                 ctx->transactionVolume = 0;
                 ctx->transactionAmount = 0;
                 rs422SendNozzleOff();
-                osDelay(100);
+                vTaskDelay(100 / portTICK_PERIOD_MS);
                 ctx->statusPollingActive = true;
                 rs422SendStatus();
                 if (!ctx->nozzleUpWarning) {

@@ -6,6 +6,8 @@
 #include "stm32f4xx_hal.h"
 #include "fsm.h"
 #include <stdbool.h>
+#include "FreeRTOS.h"
+#include "queue.h"
 
 // Структура команды RS-422
 typedef struct {
